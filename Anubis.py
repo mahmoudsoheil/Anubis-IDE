@@ -6,6 +6,7 @@
 import sys
 import glob
 import serial
+import io
 
 import Python_Coloring
 from PyQt5 import QtCore
@@ -293,11 +294,15 @@ class UI(QMainWindow):
         Open_Action = QAction("Open", self)
         Open_Action.setShortcut("Ctrl+O")
         Open_Action.triggered.connect(self.open)
+        wrapFunction_Action = QAction("wrap function", self)
+        wrapFunction_Action.setShortcut("Ctrl+w")
+        wrapFunction_Action.triggered.connect(self.wrapFunction)
 
 
         filemenu.addAction(Save_Action)
         filemenu.addAction(Close_Action)
         filemenu.addAction(Open_Action)
+        filemenu.addAction(wrapFunction_Action)
 
 
         # Seting the window Geometry
@@ -350,14 +355,80 @@ class UI(QMainWindow):
                 data = f.read()
             self.Open_Signal.reading.emit(data)
 
-
-#
+    def wrapFunction(self):
+        
+        f = io.StringIO()
+        sys.stdout = f
+        
+        #read function from editor
+        func = text.toPlainText()
+        lines = func.splitlines()
+        #get first line which is function definition
+        firstLine = lines[0].replace(" ","")
+        #get parameters names and throw last 2 characters which are "):"
+        parameters_part = firstLine.split("(",1)[1]
+        parameters_part = parameters_part[:-2]
+        if len(parameters_part) > 0:
+            #split parameteres
+            parameters = parameters_part.split(",")
+            #ask user to enter parameters
+            parameters_input = parameteres_dialog(parameters)
+            check = parameters_input.exec_()
+            parameters_values = []
+            if check :
+                for p in parameters_input.p:
+                    parameters_values.append(p.text())
+            else:
+                print("parameters missing")
+            #initialize parameters
+            for p,v in zip(parameters,parameters_values):
+                l = p + "=" + v + "\n"
+                exec(l)
+        
+        #execute function
+        lines = lines[1:] #remove firsr line (function definition)
+        for l in lines:
+            exec(l)
+        text2.append(f.getvalue())
+        
+class parameteres_dialog(QDialog):
+    "A Dialog to set input and output ranges for an optimization."
+ 
+    def __init__(self, parameters):
+        "Create a new dialogue instance."
+        super().__init__()
+        self.setWindowTitle("enter parameters")
+        self.parameters = parameters
+        self.gui_init()
+ 
+    def gui_init(self):
+        "Create and establish the widget layout."
+        self.p = []
+        layout = QVBoxLayout()
+        for p in self.parameters:
+            temp = QLineEdit()
+            self.p.append(temp)
+            row = QHBoxLayout()
+            row.addWidget(QLabel(p+":"))
+            row.addWidget(temp)
+            layout.addLayout(row)
+            
+        last_row = QHBoxLayout()
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        last_row.addWidget(self.buttonBox)
+         
+        layout.addWidget(self.buttonBox)
+        self.setLayout(layout)      
+#       
 #
 ############ end of Class ############
 #
 #
 
-if __name__ == '__main__':
+if __name__ == '__main__':        
+    
     app = QApplication(sys.argv)
     ex = UI()
     # ex = Widget()
