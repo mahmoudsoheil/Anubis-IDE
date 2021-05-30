@@ -366,7 +366,16 @@ class UI(QMainWindow):
         #get first line which is function definition
         firstLine = lines[0].replace(" ","")
         #get parameters names and throw last 2 characters which are "):"
-        parameters_part = firstLine.split("(",1)[1]
+        firstLine_splitted = firstLine.split("(",1)
+        if len(firstLine_splitted) == 1:
+            print("ERROR: syntax error in function definition")
+            text2.append(f.getvalue())
+            return    
+        parameters_part = firstLine_splitted[1]
+        if (parameters_part[-1] != ":" or parameters_part[-2] != ")"):
+            print("ERROR: syntax error in function definition")
+            text2.append(f.getvalue())
+            return
         parameters_part = parameters_part[:-2]
         if len(parameters_part) > 0:
             #split parameteres
@@ -375,20 +384,30 @@ class UI(QMainWindow):
             parameters_input = parameteres_dialog(parameters)
             check = parameters_input.exec_()
             parameters_values = []
-            if check :
+            if check == 1:
                 for p in parameters_input.p:
                     parameters_values.append(p.text())
             else:
-                print("parameters missing")
+                print("ERROR: function cancelled")
+                text2.append(f.getvalue())
+                return
             #initialize parameters
             for p,v in zip(parameters,parameters_values):
                 l = p + "=" + v + "\n"
-                exec(l)
+                try:
+                    exec(l)
+                except:
+                    print("ERROR: incomplete parameters")
+                    text2.append(f.getvalue())
+                    return
         
         #execute function
         lines = lines[1:] #remove firsr line (function definition)
         for l in lines:
-            exec(l)
+            try:
+                exec(l)
+            except:
+                print("ERROR: syntax error in line " + str(lines.index(l)) + ": " + l)
         text2.append(f.getvalue())
         
 class parameteres_dialog(QDialog):
@@ -412,7 +431,9 @@ class parameteres_dialog(QDialog):
             row.addWidget(QLabel(p+":"))
             row.addWidget(temp)
             layout.addLayout(row)
-            
+        before_last_row = QHBoxLayout()
+        before_last_row.addWidget(QLabel("Note: Enter strings between single or double quotes"))
+        layout.addLayout(before_last_row) 
         last_row = QHBoxLayout()
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
